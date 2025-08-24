@@ -1,0 +1,69 @@
+name: Todo Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yaml"
+  workflow_dispatch:
+env:
+  VITE_URL: "https://todo-api.p-gokul.dev"
+  DISTRIBUTION_ID: "E28LDQ3OLJHU3N"
+  S3_BUCKET: "todo-gh-actions"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+
+      - name: Install packages
+        run: |
+          npm install -g bun pnpm
+          pnpm install
+
+      - name: Testing Code
+        run: |
+          echo Linting check
+          pnpm run lint
+          echo Testing Code
+          bun test
+          echo Tests passed
+
+      - name: Build app
+        run: |
+          pnpm run build
+          echo Build Completed.
+
+      - name: Clean up old S3 contents
+        run: aws s3 rm s3://$S3_BUCKET/ --recursive
+
+      - name: Upload build to S3
+        working-directory: frontend
+        run: aws s3 cp dist/ s3://$S3_BUCKET/ --recursive
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+          --distribution-id $DISTRIBUTION_ID \
+          --paths "/*"
