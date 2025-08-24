@@ -8,7 +8,7 @@ const postTodoSchema = z.object({
 
 const updateTodoSchema = z.object({
   id: z.number(),
-  title: z.string().max(20).optional(),
+  title: z.string().max(50).optional(),
   body: z.string().optional(),
   isCompleted: z.boolean().optional(),
 });
