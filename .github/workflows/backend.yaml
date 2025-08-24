@@ -38,10 +38,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY   }}
           aws-region: ap-northeast-1
 
-      - name: Install bun and test
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Unit tests
         run: |
-          echo Installing bun
-          curl -fsSL https://bun.com/install | bash
           echo Perform Unit tests
           bun test
 
