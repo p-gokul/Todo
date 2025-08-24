@@ -17,48 +17,39 @@ env:
 
 jobs:
   build-and-deploy:
-    runs-on: macos-15
-
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
-
     permissions:
       contents: read
       id-token: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID  }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY   }}
-          aws-region: ap-northeast-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun test
+
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build & push (linux/arm64) to ECR
+        uses: docker/build-push-action@v6
         with:
-          bun-version: latest
-
-      - name: Install packages
-        run: |
-          bun install
-
-      - name: Unit tests
-        run: |
-          echo Perform Unit tests
-          bun test
-
-      - name: Build and push Docker image to ECR
-        working-directory: backend
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
-          docker build -t todo-backend .
-          docker tag todo-backend:latest $ECR_REPO:latest
-          docker push $ECR_REPO:latest
+          context: ./backend
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ env.ECR_REPO }}:latest
+            ${{ env.ECR_REPO }}:${{ github.sha }}
+          provenance: false
 
       - name: Force ECS redeploy
         run: |
