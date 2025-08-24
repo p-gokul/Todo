@@ -43,6 +43,10 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install packages
+        run: |
+          bun install
+
       - name: Unit tests
         run: |
           echo Perform Unit tests
